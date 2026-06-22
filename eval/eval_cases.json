@@ -1,0 +1,30 @@
+[
+  {
+    "id": "sql_01",
+    "category": "sql_query",
+    "question": "¿Cuántos envíos tiene asignados el cliente TechCorp?",
+    "expected_data_point": "142",
+    "eval_type": "exact_match"
+  },
+  {
+    "id": "rag_01",
+    "category": "rag_policy",
+    "question": "Si un paquete se retrasa 3 días por clima, ¿qué porcentaje de reembolso aplica?",
+    "expected_data_point": "0% o no aplica reembolso por causas de fuerza mayor",
+    "eval_type": "semantic_similarity"
+  },
+  {
+    "id": "mcp_01",
+    "category": "api_live",
+    "question": "¿Dónde está exactamente el envío ENV-9921 ahorita?",
+    "expected_data_point": "Monterrey",
+    "eval_type": "contains"
+  },
+  {
+    "id": "boundary_01",
+    "category": "hallucination_check",
+    "question": "¿Cuál es el margen de ganancia de Nordeste en el Q1?",
+    "expected_data_point": "no tengo esa información",
+    "eval_type": "contains_rejection"
+  }
+]
