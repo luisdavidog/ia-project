@@ -100,9 +100,10 @@ export async function ejecutarLlamadaMcp(toolName: string, args: any): Promise<a
 
         // La especificación MCP devuelve el resultado en un arreglo de contenidos.
         // Normalmente el índice 0 tiene el texto o JSON devuelto.
-        if (result.content && result.content.length > 0) {
-            const rawText = result.content[0].text as string;
-            
+        if (Array.isArray(result.content) && result.content.length > 0) {
+            const firstContent = result.content[0] as { text?: string };
+            const rawText = typeof firstContent.text === "string" ? firstContent.text : "";
+
             // Intentamos parsear a JSON si el servidor envió una cadena JSONificada
             try {
                 return JSON.parse(rawText);
