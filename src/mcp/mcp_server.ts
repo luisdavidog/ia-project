@@ -5,25 +5,73 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 
-// Inicializamos el servidor MCP
+const API_BASE_URL = process.env.NORDESTE_API_BASE_URL || "http://127.0.0.1:8000";
+const API_TOKEN = process.env.NORDESTE_API_TOKEN || "nordeste-demo-key-2025";
+
 const server = new Server(
   { name: "nordeste-ops-api", version: "1.0.0" },
   { capabilities: { tools: {} } }
 );
 
-// 1. Exponer la definición de las herramientas
+function extractShipmentId(value: unknown): number {
+  if (typeof value !== "string" && typeof value !== "number") {
+    throw new Error("tracking_id debe ser texto o numero.");
+  }
+
+  const raw = String(value).trim();
+  const match = raw.match(/\d+/);
+  if (!match) {
+    throw new Error(`No se pudo extraer un shipment_id numerico de '${raw}'.`);
+  }
+
+  return Number(match[0]);
+}
+
+async function fetchShipmentStatus(trackingId: unknown) {
+  const shipmentId = extractShipmentId(trackingId);
+  const url = `${API_BASE_URL.replace(/\/$/, "")}/shipments/${shipmentId}/status`;
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${API_TOKEN}`,
+      Accept: "application/json",
+    },
+  });
+
+  const bodyText = await response.text();
+  let body: unknown;
+  try {
+    body = bodyText ? JSON.parse(bodyText) : {};
+  } catch {
+    body = { raw_response: bodyText };
+  }
+
+  if (!response.ok) {
+    return {
+      error: "api_error",
+      status_code: response.status,
+      detail: body,
+    };
+  }
+
+  return body;
+}
+
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
     tools: [
       {
         name: "get_shipment_status_api",
-        description: "Consulta el estatus en tiempo real de un envío a través de la API de Operaciones de Nordeste.",
+        description:
+          "Consulta el estatus en tiempo real de un envio a traves de la API de Operaciones de Nordeste.",
         inputSchema: {
           type: "object",
           properties: {
             tracking_id: {
               type: "string",
-              description: "El ID o número de guía del envío (ej. ENV-1029).",
+              description:
+                "El ID o numero de guia del envio. Acepta formatos como ENV-1029 o 1029.",
             },
           },
           required: ["tracking_id"],
@@ -33,34 +81,25 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   };
 });
 
-// 2. Ejecutar la lógica cuando se invoca la herramienta
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   if (request.params.name === "get_shipment_status_api") {
     const trackingId = request.params.arguments?.tracking_id;
-    
-    // Aquí harías el fetch real a la API mockeada en la carpeta /api
-    // Para simplificar, simulamos la respuesta de la API:
-    const mockApiResponse = {
-        tracking_id: trackingId,
-        status: "En tránsito",
-        current_location: "Monterrey Hub",
-        estimated_delivery: "2026-06-23T14:00:00Z"
-    };
+    const apiResponse = await fetchShipmentStatus(trackingId);
 
     return {
       content: [
         {
           type: "text",
-          text: JSON.stringify(mockApiResponse),
+          text: JSON.stringify(apiResponse),
         },
       ],
     };
   }
+
   throw new Error(`Tool not found: ${request.params.name}`);
 });
 
-// Arrancar el servidor
 const transport = new StdioServerTransport();
 server.connect(transport).then(() => {
-    console.error("Servidor MCP de Nordeste corriendo en stdio");
+  console.error("Servidor MCP de Nordeste corriendo en stdio");
 });
